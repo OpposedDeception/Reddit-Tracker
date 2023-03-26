@@ -9,8 +9,7 @@ python3 setup.py install
 ```
 Then wait till it installs
 
-##
-Usage
+## Usage
 ```
 --reddit -r [Subreddit name]
 --user -u [Reddit user]
