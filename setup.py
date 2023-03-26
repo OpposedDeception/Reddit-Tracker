@@ -8,7 +8,7 @@ setup(
     py_modules=['reddit_tracker'],
     install_requires=[
         'requests',
-        'beautifulsoup4',
+        'praw',
         'argparse',
         'rich',
         'pyfiglet'
