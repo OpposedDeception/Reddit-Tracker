@@ -21,6 +21,7 @@ Then wait till it installs
 --user -u [Reddit user]
 --upvotes -up [Reddit user]
 --comments -c [Reddit user]
+-index -i [Comments limit]
 ```
 
 
