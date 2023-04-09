@@ -1,10 +1,14 @@
-import argparse
-import praw
+#!/usr/bin/env python3
+
 from rich.console import Console
 from rich.panel import Panel
+import argparse
+import praw
+import praw.exceptions
 import pyfiglet
 import time
 import csv
+
 
 class Csv:
     @staticmethod
@@ -23,12 +27,13 @@ class RedditTracker:
         self.upvotes = False
         self.comments = False
         self.reddit = None
+        self.index = None
 
     def authenticate(self, client_id, client_secret):
         self.reddit = praw.Reddit(
             client_id=client_id,
             client_secret=client_secret,
-            user_agent="User tracker for u/ahstagger",
+            user_agent="User tracker for u/Reddit",
         )
 
     def run(self, subreddit, user, upvotes, comments):
@@ -48,6 +53,7 @@ class RedditTracker:
         subreddit_name = subreddit.display_name
         subreddit_subscribers = subreddit.subscribers
         console.print(f"\n[bold]Subreddit:[/bold] {subreddit_name} ({subreddit_subscribers} subscribers)")
+    
 
         if self.upvotes:
             upvote_count = user.link_karma
@@ -56,10 +62,28 @@ class RedditTracker:
         if self.comments:
             comment_count = user.comment_karma
             console.print(f"\n[bold]{display_name}[/bold] has [bold]{comment_count}[/bold] comments.")
-
+            
         header = ["Display Name", "Karma Score", "Subreddit Name", "Subreddit Subscribers", "Upvote Count", "Comment Count"]
         data = [[display_name, karma_score, subreddit_name, subreddit_subscribers, upvote_count if self.upvotes else "", comment_count if self.comments else ""]]
         Csv.save_data("reddit_data.csv", header, data)
+        
+    def get_comments(self, username, limit):
+        redditor = self.reddit.redditor(username)
+        comments = redditor.comments.new(limit=limit)
+        comment_data = []
+        for comment in comments:
+            comment_data.append({
+                'body': comment.body,
+                'score': comment.score,
+                'created': comment.created_utc,
+                'submission_id': comment.submission.id
+            })
+        c = Console()
+        c.print(f"\n[bold]Comment:[/bold] {comment.body} ({comment.score})")
+        header = ["Body", "Score", "Created UTC", "Submission ID"]
+        data = [[comment['body'], comment['score'], comment['created'], comment['submission_id']] for comment in comment_data]
+        Csv.save_data("reddit_comments.csv", header, data)
+                    
 
 
 if __name__ == '__main__':
@@ -78,7 +102,7 @@ if __name__ == '__main__':
              ' V        V'
 """ + "\033[0m")
 
-    ver = pyfiglet.figlet_format("V.1.1")
+    ver = pyfiglet.figlet_format("V.1.2")
     print(ver)
     client_id = input("Enter your Reddit client ID: ")
     client_secret = input("Enter your Reddit client secret: ")
@@ -88,6 +112,7 @@ if __name__ == '__main__':
     parser.add_argument("--user", "-u", help="Specify the Reddit user (e.g., spez)", required=True)
     parser.add_argument("--upvotes", "-up", action="store_true", help="Get the number of upvotes for the user")
     parser.add_argument("--comments", "-c", action="store_true", help="Get the number of comments for the user")
+    parser.add_argument('-index', type=int, help='The index of the comment to retrieve.')
     args = parser.parse_args()
 
     reddit_tracker = RedditTracker()
@@ -95,7 +120,8 @@ if __name__ == '__main__':
         try:
             reddit_tracker.authenticate(client_id, client_secret)
             reddit_tracker.run(args.reddit, args.user, args.upvotes, args.comments)
-        except Exception as e:
-            print(e)
+            reddit_tracker.get_comments(args.user, args.index)
+        except praw.exceptions.RedditAPIException as e:
+            print(e)            
             continue
         time.sleep(10)
