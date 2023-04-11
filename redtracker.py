@@ -9,7 +9,7 @@ from pyfiglet import figlet_format
 import csv
 
 
-class Csv:
+class Csv(object):
     @staticmethod
     def save_data(filename, header, data):
         with open(filename, mode='w', newline='') as file:
@@ -19,7 +19,7 @@ class Csv:
                 write.writerow(row)
 
 
-class RedditTracker:
+class RedditTracker(object):
     def __init__(self):
         self.subreddit = None
         self.user = None
