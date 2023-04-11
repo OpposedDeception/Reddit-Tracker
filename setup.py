@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='reddit-tracker',
-    version='1.2',
+    version='1.3',
     author='OpposedDeception',
     description='A console app for tracking Reddit users and subreddits',
     py_modules=['reddit_tracker'],
