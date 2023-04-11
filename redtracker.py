@@ -128,7 +128,7 @@ if __name__ == '__main__':
     parser.add_argument("--upvotes", "-up", action="store_true", help="Get the number of upvotes for the user")
     parser.add_argument("--comments", "-c", action="store_true", help="Get the number of comments for the user")
     parser.add_argument('--index', "-i", type=int, help='The index of the comment to retrieve. Only for comments now')
-    parser.add_argument("--post", "-p", help="Shows last post from the selected subreddit")
+    parser.add_argument("--post", "-p", help="Shows the last post from the selected subreddit")
     args = parser.parse_args()
 
     reddit_tracker = RedditTracker()
@@ -145,7 +145,7 @@ if __name__ == '__main__':
             else:
                  pass
         except Exception as e:
-            print("An error has occured! Please double check your Client ID/Client Secret. Make sure you typed correct username/subreddit without u/ or r/" + e)        
+            print("An error has occured! Please double check your Client ID/Client Secret. Make sure you typed correct the username/subreddit without u/ or r/" + e)        
             break            
             sleep(10)
             exit()
