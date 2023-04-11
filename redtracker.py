@@ -2,11 +2,10 @@
 
 from rich.console import Console
 from rich.panel import Panel
-import argparse
-import praw
-import praw.exceptions
-import pyfiglet
-import time
+from time import sleep
+from argparse import ArgumentParser
+from praw import Reddit
+from pyfiglet import figlet_format
 import csv
 
 
@@ -14,10 +13,10 @@ class Csv:
     @staticmethod
     def save_data(filename, header, data):
         with open(filename, mode='w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(header)
+            write = csv.writer(file)
+            write.writerow(header)
             for row in data:
-                writer.writerow(row)
+                write.writerow(row)
 
 
 class RedditTracker:
@@ -30,7 +29,7 @@ class RedditTracker:
         self.index = None
 
     def authenticate(self, client_id, client_secret):
-        self.reddit = praw.Reddit(
+        self.reddit = Reddit(
             client_id=client_id,
             client_secret=client_secret,
             user_agent="User tracker for u/Reddit",
@@ -83,9 +82,25 @@ class RedditTracker:
         header = ["Body", "Score", "Created UTC", "Submission ID"]
         data = [[comment['body'], comment['score'], comment['created'], comment['submission_id']] for comment in comment_data]
         Csv.save_data("reddit_comments.csv", header, data)
+        
+    def get_posts(self, subreddit, limit=1):
+            subreddit = self.reddit.subreddit(subreddit)
+            latest_post = subreddit.new(limit=1).__next__()
+            data = [[latest_post.title, latest_post.shortlink, latest_post.selftext]]
+            post_comments = []
+            for comment in latest_post.comments:
+                if len(post_comments) < 4:
+                    post_comments.append(f"{comment.author.name}: {comment.body}")                    
+                    c = Console()
+                    csv = Csv()
+                    header = ["Post Title", "Post URL", "Post Text"]
+                    c.print(f"\n[bold]Post:[/bold] {latest_post.title} ({latest_post.selftext})")
+                    c.print(f"\n[bold]Post comments:[/bold] {comment.body} ({comment.author.name})")
+                    csv.save_data("reddit_post_comments.csv", header, data)                    
+                else:
+                    break                                      
                     
-
-
+                    
 if __name__ == '__main__':
     print("\033[1;31m" + r"""
         _____.-~"   "~-.____
@@ -102,17 +117,18 @@ if __name__ == '__main__':
              ' V        V'
 """ + "\033[0m")
 
-    ver = pyfiglet.figlet_format("V.1.2")
+    ver = figlet_format("V.1.3")
     print(ver)
     client_id = input("Enter your Reddit client ID: ")
     client_secret = input("Enter your Reddit client secret: ")
 
-    parser = argparse.ArgumentParser(description="Reddit Tracker")
+    parser = ArgumentParser(description="Reddit Tracker")
     parser.add_argument("--reddit", "-r", help="Specify the subreddit name (e.g., learnpython)", required=False)
     parser.add_argument("--user", "-u", help="Specify the Reddit user (e.g., spez)", required=True)
     parser.add_argument("--upvotes", "-up", action="store_true", help="Get the number of upvotes for the user")
     parser.add_argument("--comments", "-c", action="store_true", help="Get the number of comments for the user")
-    parser.add_argument('-index', type=int, help='The index of the comment to retrieve.')
+    parser.add_argument('--index', "-i", type=int, help='The index of the comment to retrieve. Only for comments now')
+    parser.add_argument("--post", "-p", help="Shows last post from the selected subreddit")
     args = parser.parse_args()
 
     reddit_tracker = RedditTracker()
@@ -120,8 +136,17 @@ if __name__ == '__main__':
         try:
             reddit_tracker.authenticate(client_id, client_secret)
             reddit_tracker.run(args.reddit, args.user, args.upvotes, args.comments)
-            reddit_tracker.get_comments(args.user, args.index)
-        except praw.exceptions.RedditAPIException as e:
-            print(e)            
-            continue
-        time.sleep(10)
+            if args.index:
+                reddit_tracker.get_comments(args.user, args.index)
+                if args.post:
+                   reddit_tracker.get_posts(args.post)
+                else:
+                    pass
+            else:
+                 pass
+        except Exception as e:
+            print("An error has occured! Please double check your Client ID/Client Secret. Make sure you typed correct username/subreddit without u/ or r/" + e)        
+            break            
+            sleep(10)
+            exit()
+        sleep(30)
