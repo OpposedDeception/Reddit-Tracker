@@ -2,6 +2,14 @@
 Track and get data about user or subreddit in a matter of seconds!
 <img src="https://media.wired.com/photos/5954a1b05578bd7594c46869/master/w_2560%2Cc_limit/reddit-alien-red-st.jpg" width="240" height="180" />
 
+## Features
+
+- Sentiment analyzer: analyze the sentiment of Reddit comments and posts to gain insights into user sentiment.
+- Keyword extractor: extract keywords from Reddit comments and posts to identify trends and popular topics.
+- User network analyzer: analyze the connections between users in a subreddit to identify influential users or communities.
+- File saver: save Reddit comments and posts to a local file for further analysis.
+
+
 ## CSV Format
 This script also can save your data to .csv file for a better
 usability in the future.
