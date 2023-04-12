@@ -14,7 +14,8 @@ from praw import Reddit
 from pyfiglet import figlet_format
 from datetime import datetime
 from requests import get
-from textblob import TextBlob
+from textblob import TextBlob 
+import networkx as nx
 import nltk
 import csv
 
@@ -184,8 +185,29 @@ class RedditTracker:
     def analyze_sentiment(self, text):
         blob = TextBlob(text)
         sentiment = blob.sentiment.polarity
-        return sentiment                                           
-                    
+        return sentiment 
+ 
+                                        
+    def build_user_network(self, subreddit_name):
+       subreddit = self.reddit.subreddit(subreddit_name)
+       users = {}
+       G = nx.DiGraph()
+       for submission in subreddit.top(limit=100):
+          author = submission.author
+          if author:
+            users[author.name] = author
+            G.add_node(author.name)
+            for comment in submission.comments:
+                if hasattr(comment, 'author') and comment.author != author:
+                    author_name = author.name
+                    commenter_name = comment.author.name
+                    G.add_node(commenter_name)
+                    if G.has_edge(commenter_name, author_name):
+                        G[commenter_name][author_name]['weight'] += 1
+                    else:
+                        G.add_edge(commenter_name, author_name, weight=1)
+       return G, users 
+
 
     def get_influential_users(self, username, keyword, limit=10):
         user = self.reddit.redditor(username)
