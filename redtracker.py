@@ -10,15 +10,6 @@ import csv
 
 
 class Csv(object):
-    @staticmethod
-    def save_data(filename, header, data):
-        with open(filename, mode='w', newline='') as file:
-            write = csv.writer(file)
-            write.writerow(header)
-            for row in data:
-                write.writerow(row)
-
-class Csv(object):
     def __init__(self, filename):
         self.filename = filename
         self.headers = []
@@ -48,6 +39,21 @@ class Csv(object):
     def __str__(self):
         rows = [self.headers] + self.data
         return "\n".join([",".join(row) for row in rows])
+
+    @staticmethod
+    def save_data_csv(filename, header, data):
+        with open(filename, mode='w', newline='') as file:
+            write = csv.writer(file)
+            write.writerow(header)
+            for row in data:
+                write.writerow(row)
+
+    @classmethod
+    def from_file(cls, filename):
+        instance = cls(filename)
+        instance.csvread()
+        return instance
+
 
 
 
@@ -97,7 +103,8 @@ class RedditTracker(object):
         header = ["Display Name", "Karma Score", "Subreddit Name", "Subreddit Subscribers", "Upvote Count", "Comment Count"]
         data = [[display_name, karma_score, subreddit_name, subreddit_subscribers, upvote_count if self.upvotes else "", comment_count if self.comments else ""]]
         csv = Csv("reddit_data.csv", header, data)
-        csv.csvsort().csvwrite()
+        csv.csvsort(header).csvwrite()
+      
         
         
     def get_comments(self, username, limit):
@@ -116,7 +123,7 @@ class RedditTracker(object):
         header = ["Body", "Score", "Created UTC", "Submission ID"]
         data = [[comment['body'], comment['score'], comment['created'], comment['submission_id']] for comment in comment_data]
         csv = Csv("reddit_comments.csv", header, data)
-        csv.csvsort().csvwrite()
+        csv.csvsort(header).csvwrite()
         
     def get_posts(self, subreddit, limit=1):
             subreddit = self.reddit.subreddit(subreddit)
@@ -132,7 +139,7 @@ class RedditTracker(object):
                     c.print(f"\n[bold]Post:[/bold] {latest_post.title} ({latest_post.selftext})")
                     c.print(f"\n[bold]Post comments:[/bold] {comment.body} ({comment.author.name})")
                     csv = Csv("reddit_post_comments.csv", header, data)
-                    csv.csvsort().csvwrite()          
+                    csv.csvsort(header).csvwrite()          
                 else:
                     break                                      
                     
