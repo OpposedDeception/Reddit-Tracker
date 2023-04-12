@@ -1,34 +1,51 @@
 #!/usr/bin/env python3
 
+from __future__ import absolute_import
+from json import dump
+from pytz import UTC
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
 from rich.console import Console
 from rich.panel import Panel
 from time import sleep
 from argparse import ArgumentParser
 from praw import Reddit
 from pyfiglet import figlet_format
+from datetime import datetime
+from requests import get
+import nltk
 import csv
 
 
+def get_current_utc_time():
+    response = get('http://worldtimeapi.org/api/timezone/Etc/UTC')
+    data = response.json()
+    utc_time_str = data['datetime']
+    utc_time = datetime.fromisoformat(utc_time_str).replace(tzinfo=UTC)
+    c = Console()
+    c.print(f"[bold]The current time is: [\bold]" + str(utc_time))
+
+
 class Csv(object):
-    def __init__(self, filename):
+     def __init__(self, filename=None):
         self.filename = filename
         self.headers = []
         self.data = []
 
-    def csvread(self):
+     def csvread(self):
         with open(self.filename, "r") as f:
             lines = f.readlines()
 
         self.headers = lines[0].strip().split(",")
         self.data = [line.strip().split(",") for line in lines[1:]]
 
-    def csvwrite(self):
+     def csvwrite(self):
         with open(self.filename, "w") as f:
             f.write(",".join(self.headers) + "\n")
             for row in self.data:
                 f.write(",".join(row) + "\n")
 
-    def csvsort(self, column, reverse=False):
+     def csvsort(self, column, reverse=False):
         if column not in self.headers:
             raise ValueError("Invalid column name")
 
@@ -36,28 +53,49 @@ class Csv(object):
         self.data.sort(key=lambda x: x[index], reverse=reverse)
         self.headers = [self.headers[index]] + [h for h in self.headers if h != self.headers[index]]
 
-    def __str__(self):
+     def __str__(self):
         rows = [self.headers] + self.data
         return "\n".join([",".join(row) for row in rows])
 
-    @staticmethod
-    def save_data_csv(filename, header, data):
+     @classmethod
+     def from_file(cls, filename):
+        instance = cls(filename)
+        instance.csvread()
+        return instance
+    
+     @staticmethod
+     def save_data(filename, header, data):
         with open(filename, mode='w', newline='') as file:
             write = csv.writer(file)
             write.writerow(header)
             for row in data:
                 write.writerow(row)
+                
+class KeyWords(object):
+    @staticmethod
+    def extract_keywords(text, *args, **kwargs):
+        nltk.download('punkt')
+        nltk.download('stopwords')
+        stop_words = set(kwargs.get('stopwords', stopwords.words('english')))
+        min_len = kwargs.get('min_len', 4)
+        min_count = kwargs.get('min_count', 3)
+        
+        tokens = word_tokenize(text)
+        tokens = [t for t in tokens if t not in stop_words]
+        tr = nltk.Text(tokens)
+        keywords = tr.vocab()
+        keywords = [k for k in keywords.keys() if len(k) >= min_len and keywords[k] >= min_count]
+        return keywords
+ 
+                 
+    @staticmethod
+    def save_keywords(keywords, filename):
+         with open(filename, 'w') as f:
+            dump(keywords, f)
+            print(f"Keywords have been saved to {filename}.")                
 
-    @classmethod
-    def from_file(cls, filename):
-        instance = cls(filename)
-        instance.csvread()
-        return instance
 
-
-
-
-class RedditTracker(object):
+class RedditTracker:
     def __init__(self):
         self.subreddit = None
         self.user = None
@@ -68,8 +106,8 @@ class RedditTracker(object):
 
     def authenticate(self, client_id, client_secret):
         self.reddit = Reddit(
-            client_id=client_id,
-            client_secret=client_secret,
+            client_id='MOVUfFqpmUa-Dw65VNPf9w',
+client_secret='TiSgOtH0HHHZwHcGmpZkCYNQTl1kAQ',
             user_agent="User tracker for u/Reddit",
         )
 
@@ -102,10 +140,7 @@ class RedditTracker(object):
             
         header = ["Display Name", "Karma Score", "Subreddit Name", "Subreddit Subscribers", "Upvote Count", "Comment Count"]
         data = [[display_name, karma_score, subreddit_name, subreddit_subscribers, upvote_count if self.upvotes else "", comment_count if self.comments else ""]]
-        csv = Csv("reddit_data.csv", header, data)
-        csv.csvsort(header).csvwrite()
-      
-        
+        Csv.save_data("reddit_data.csv", header, data)
         
     def get_comments(self, username, limit):
         redditor = self.reddit.redditor(username)
@@ -119,11 +154,13 @@ class RedditTracker(object):
                 'submission_id': comment.submission.id
             })
         c = Console()
-        c.print(f"\n[bold]Comment:[/bold] {comment.body} ({comment.score})")
+        #c.print(f"\n[bold]Comment:[/bold] {comment.body} ({comment.score})")
+        comment_text = ' '.join([comment['body'] for comment in comment_data])
         header = ["Body", "Score", "Created UTC", "Submission ID"]
         data = [[comment['body'], comment['score'], comment['created'], comment['submission_id']] for comment in comment_data]
-        csv = Csv("reddit_comments.csv", header, data)
-        csv.csvsort(header).csvwrite()
+        Csv.save_data("reddit_comments.csv", header, data)
+        return comment_text
+
         
     def get_posts(self, subreddit, limit=1):
             subreddit = self.reddit.subreddit(subreddit)
@@ -138,8 +175,7 @@ class RedditTracker(object):
                     header = ["Post Title", "Post URL", "Post Text"]
                     c.print(f"\n[bold]Post:[/bold] {latest_post.title} ({latest_post.selftext})")
                     c.print(f"\n[bold]Post comments:[/bold] {comment.body} ({comment.author.name})")
-                    csv = Csv("reddit_post_comments.csv", header, data)
-                    csv.csvsort(header).csvwrite()          
+                    csv.save_data("reddit_post_comments.csv", header, data)                    
                 else:
                     break                                      
                     
@@ -160,8 +196,9 @@ if __name__ == '__main__':
              ' V        V'
 """ + "\033[0m")
 
-    ver = figlet_format("V.1.3")
+    ver = figlet_format("V.1.4")
     print(ver)
+    get_current_utc_time()
     client_id = input("Enter your Reddit client ID: ")
     client_secret = input("Enter your Reddit client secret: ")
 
@@ -171,7 +208,8 @@ if __name__ == '__main__':
     parser.add_argument("--upvotes", "-up", action="store_true", help="Get the number of upvotes for the user")
     parser.add_argument("--comments", "-c", action="store_true", help="Get the number of comments for the user")
     parser.add_argument('--index', "-i", type=int, help='The index of the comment to retrieve. Only for comments now')
-    parser.add_argument("--post", "-p", help="Shows the last post from the selected subreddit")
+    parser.add_argument("--post", "-p", help="Shows last post from the selected subreddit")
+    parser.add_argument("--keywords", "-kw", help="Allows you to write keywords you want to save. All words are saved in a .json file")
     args = parser.parse_args()
 
     reddit_tracker = RedditTracker()
@@ -183,12 +221,35 @@ if __name__ == '__main__':
                 reddit_tracker.get_comments(args.user, args.index)
                 if args.post:
                    reddit_tracker.get_posts(args.post)
+                   print("\033[1;35m" + r"""
+ /\_/\
+( o   o )
+=(  Y  )=
+  \~(*)~/
+   - ^ -
+""" + "\033[0m")
+
+                   if input("Do you want to save the keywords to a file? (Y/N): ").lower() == 'y':
+                    keywords = KeyWords.extract_keywords(reddit_tracker.get_comments(args.user, args.index), stopwords={'is', 'some', 'that', 'US'})
+
+                    filename = f"reddit_keywords.json"
+                    KeyWords.save_keywords(keywords, filename)
                 else:
-                    pass
+                    continue
             else:
-                 pass
+                print("\033[1;35m" + r"""
+ /\_/\
+( o   o )
+=(  Y  )=
+  \~(*)~/
+   - ^ -
+""" + "\033[0m")
+
+                c = Console()
+                c.print(f'[bold]Under the maintainment![\bold]')
+                exit()
         except Exception as e:
-            print("An error has occured! Please double check your Client ID/Client Secret. Make sure you typed correct the username/subreddit without u/ or r/" + e)        
+            print("An error has occured! Please double check your Client ID/Client Secret. Make sure you typed correct username/subreddit without u/ or r/" + e)        
             break            
             sleep(10)
             exit()
