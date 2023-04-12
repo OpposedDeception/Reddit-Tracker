@@ -18,6 +18,38 @@ class Csv(object):
             for row in data:
                 write.writerow(row)
 
+class Csv(object):
+    def __init__(self, filename):
+        self.filename = filename
+        self.headers = []
+        self.data = []
+
+    def csvread(self):
+        with open(self.filename, "r") as f:
+            lines = f.readlines()
+
+        self.headers = lines[0].strip().split(",")
+        self.data = [line.strip().split(",") for line in lines[1:]]
+
+    def csvwrite(self):
+        with open(self.filename, "w") as f:
+            f.write(",".join(self.headers) + "\n")
+            for row in self.data:
+                f.write(",".join(row) + "\n")
+
+    def csvsort(self, column, reverse=False):
+        if column not in self.headers:
+            raise ValueError("Invalid column name")
+
+        index = self.headers.index(column)
+        self.data.sort(key=lambda x: x[index], reverse=reverse)
+        self.headers = [self.headers[index]] + [h for h in self.headers if h != self.headers[index]]
+
+    def __str__(self):
+        rows = [self.headers] + self.data
+        return "\n".join([",".join(row) for row in rows])
+
+
 
 class RedditTracker(object):
     def __init__(self):
@@ -64,7 +96,9 @@ class RedditTracker(object):
             
         header = ["Display Name", "Karma Score", "Subreddit Name", "Subreddit Subscribers", "Upvote Count", "Comment Count"]
         data = [[display_name, karma_score, subreddit_name, subreddit_subscribers, upvote_count if self.upvotes else "", comment_count if self.comments else ""]]
-        Csv.save_data("reddit_data.csv", header, data)
+        csv = Csv("reddit_data.csv", header, data)
+        csv.csvsort().csvwrite()
+        
         
     def get_comments(self, username, limit):
         redditor = self.reddit.redditor(username)
@@ -81,7 +115,8 @@ class RedditTracker(object):
         c.print(f"\n[bold]Comment:[/bold] {comment.body} ({comment.score})")
         header = ["Body", "Score", "Created UTC", "Submission ID"]
         data = [[comment['body'], comment['score'], comment['created'], comment['submission_id']] for comment in comment_data]
-        Csv.save_data("reddit_comments.csv", header, data)
+        csv = Csv("reddit_comments.csv", header, data)
+        csv.csvsort().csvwrite()
         
     def get_posts(self, subreddit, limit=1):
             subreddit = self.reddit.subreddit(subreddit)
@@ -96,7 +131,8 @@ class RedditTracker(object):
                     header = ["Post Title", "Post URL", "Post Text"]
                     c.print(f"\n[bold]Post:[/bold] {latest_post.title} ({latest_post.selftext})")
                     c.print(f"\n[bold]Post comments:[/bold] {comment.body} ({comment.author.name})")
-                    csv.save_data("reddit_post_comments.csv", header, data)                    
+                    csv = Csv("reddit_post_comments.csv", header, data)
+                    csv.csvsort().csvwrite()          
                 else:
                     break                                      
                     
