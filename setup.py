@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='reddit-tracker',
-    version='1.4',
+    version='1.5',
     author='OpposedDeception',
     description='A console app for tracking Reddit users and subreddits',
     py_modules=['reddit_tracker'],
@@ -16,7 +16,8 @@ setup(
         'nltk',
         'pytz',
         'requests',
-        'datetime'
+        'datetime',
+        'textblob'
     ],
     entry_points='''
         [console_scripts]
