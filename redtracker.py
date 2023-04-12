@@ -106,8 +106,8 @@ class RedditTracker:
 
     def authenticate(self, client_id, client_secret):
         self.reddit = Reddit(
-            client_id='MOVUfFqpmUa-Dw65VNPf9w',
-client_secret='TiSgOtH0HHHZwHcGmpZkCYNQTl1kAQ',
+            client_id=client_id,
+            client_secret=client_secret,
             user_agent="User tracker for u/Reddit",
         )
 
