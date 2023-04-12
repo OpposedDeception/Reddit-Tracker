@@ -23,6 +23,7 @@ Then wait till it installs
 --comments -c [Reddit user]
 --index -i [Comments limit]
 --post -p [Subreddit name]
+--keywords -kw [Keywords]
 ```
 
 
