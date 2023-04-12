@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+
 from __future__ import absolute_import
 from json import dump
 from pytz import UTC
@@ -13,12 +14,13 @@ from praw import Reddit
 from pyfiglet import figlet_format
 from datetime import datetime
 from requests import get
+from textblob import TextBlob
 import nltk
 import csv
 
 
 def get_current_utc_time():
-    response = get('http://worldtimeapi.org/api/timezone/Etc/UTC')
+    response = get('https://worldtimeapi.org/api/timezone/Etc/UTC')
     data = response.json()
     utc_time_str = data['datetime']
     utc_time = datetime.fromisoformat(utc_time_str).replace(tzinfo=UTC)
@@ -107,7 +109,7 @@ class RedditTracker:
     def authenticate(self, client_id, client_secret):
         self.reddit = Reddit(
             client_id=client_id,
-            client_secret=client_secret,
+            client_secret=client_secret, 
             user_agent="User tracker for u/Reddit",
         )
 
@@ -177,8 +179,51 @@ class RedditTracker:
                     c.print(f"\n[bold]Post comments:[/bold] {comment.body} ({comment.author.name})")
                     csv.save_data("reddit_post_comments.csv", header, data)                    
                 else:
-                    break                                      
+                    break        
+                      
+    def analyze_sentiment(self, text):
+        blob = TextBlob(text)
+        sentiment = blob.sentiment.polarity
+        return sentiment                                           
                     
+
+    def get_influential_users(self, username, keyword, limit=10):
+        user = self.reddit.redditor(username)
+        users = {}
+    
+        for submission in user.submissions.new(limit=limit):
+            if keyword.lower() in submission.title.lower():
+                author = submission.author
+                if author not in users:
+                    users[author] = {
+                    'score': submission.score,
+                    'num_comments': submission.num_comments,
+                    'followers': author.subreddit['subscribers'],
+                    'posts': 1
+                }
+                else:
+                    users[author]['score'] += submission.score
+                    users[author]['num_comments'] += submission.num_comments
+                    users[author]['posts'] += 1
+
+                for comment in user.comments.new(limit=limit):
+                    if keyword.lower() in comment.body.lower():
+                        author = comment.author
+                        if author not in users:
+                            users[author] = {
+                    'score': comment.score,
+                    'num_comments': 1,
+                    'followers': author.subreddit['subscribers'],
+                    'posts': 0
+                }
+                        else:
+                            users[author]['score'] += comment.score
+                            users[author]['num_comments'] += 1
+    
+                        influential_users = sorted(users.items(), key=lambda x: x[1]['followers'], reverse=True)[:10]
+                        c = Console()
+                        c.print(f"[bold]Influential users: [\bold] ({influential_users})")
+
                     
 if __name__ == '__main__':
     print("\033[1;31m" + r"""
@@ -196,7 +241,7 @@ if __name__ == '__main__':
              ' V        V'
 """ + "\033[0m")
 
-    ver = figlet_format("V.1.4")
+    ver = figlet_format("V.1.5")
     print(ver)
     get_current_utc_time()
     client_id = input("Enter your Reddit client ID: ")
@@ -209,7 +254,7 @@ if __name__ == '__main__':
     parser.add_argument("--comments", "-c", action="store_true", help="Get the number of comments for the user")
     parser.add_argument('--index', "-i", type=int, help='The index of the comment to retrieve. Only for comments now')
     parser.add_argument("--post", "-p", help="Shows last post from the selected subreddit")
-    parser.add_argument("--keywords", "-kw", help="Allows you to write keywords you want to save. All words are saved in a .json file")
+    parser.add_argument("--keywords", "-kw", help="Allows you to write keywords you want to save. All words are saved in a .json file", required=False)
     args = parser.parse_args()
 
     reddit_tracker = RedditTracker()
@@ -219,7 +264,19 @@ if __name__ == '__main__':
             reddit_tracker.run(args.reddit, args.user, args.upvotes, args.comments)
             if args.index:
                 reddit_tracker.get_comments(args.user, args.index)
+                if args.index:
+                    comments = reddit_tracker.get_comments(args.user, 10)
+                    for comment in comments:
+                        sentiment = reddit_tracker.analyze_sentiment(reddit_tracker.get_comments(args.user, args.index))
+                        c = Console()
+                        c.print(f"Sentiment: {sentiment}")
+                        c.print(f"The number represents the sentiment score of the text. In this case, the sentiment score is {sentiment} which indicates a slightly negative sentiment. The sentiment score is usually a value between -1 and 1, with negative values indicating negative sentiment, positive values indicating positive sentiment, and zero indicating a neutral sentiment. The closer the value is to -1 or 1, the stronger the sentiment.")
+                        break
+                        if args.keywords:
+                           reddit_tracker.get_influential_users(args.user, args.keywords)
+                
                 if args.post:
+                   
                    reddit_tracker.get_posts(args.post)
                    print("\033[1;35m" + r"""
  /\_/\
@@ -233,9 +290,9 @@ if __name__ == '__main__':
                     keywords = KeyWords.extract_keywords(reddit_tracker.get_comments(args.user, args.index), stopwords={'is', 'some', 'that', 'US'})
 
                     filename = f"reddit_keywords.json"
-                    KeyWords.save_keywords(keywords, filename)
+                    KeyWords.save_keywords(keywords, filename)                   
                 else:
-                    continue
+                    exit()
             else:
                 print("\033[1;35m" + r"""
  /\_/\
