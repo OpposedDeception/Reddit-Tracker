@@ -1,4 +1,17 @@
-# Reddit-Tracker
+# Development has been ended!
+
+The development of this script is stopped since Reddit planning is shut down their free API. 
+
+Therefore no future updates for this program.
+
+Maybe in the future I'll rewrite with BeautifulSoup library and other web scrapers.
+
+But for now I won't develop it anymore.
+
+<a href="https://archive.ph/i2KVi">Read more here!
+
+
+## Reddit-Tracker
 Track and get data about user or subreddit in a matter of seconds!
 <img src="https://media.wired.com/photos/5954a1b05578bd7594c46869/master/w_2560%2Cc_limit/reddit-alien-red-st.jpg" width="240" height="180" />
 
